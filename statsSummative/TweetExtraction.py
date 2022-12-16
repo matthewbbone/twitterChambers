@@ -1,6 +1,4 @@
 import pandas as pd
-import dotenv
-config = dotenv.dotenv_values("./.env")
 import json
 from dateutil import parser
 
