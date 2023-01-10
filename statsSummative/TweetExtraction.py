@@ -42,7 +42,7 @@ def get_retweet_network(chunk_files):
     
     return pd.DataFrame(retweet_list)
 
-def get_hydrated_tweets(file, user_dict):
+def get_user_tweets(file, user_dict):
     '''
     file: filepath for jsonl from hydrator app
     user_file: list of users whom you want to get tweets from
@@ -85,7 +85,65 @@ def get_tweets(chunk_files, user_dict):
 
     tweet_list = []
     for chunk in chunk_files:
-        tweet_list = tweet_list + get_hydrated_tweets(chunk, user_dict)
+        tweet_list = tweet_list + get_user_tweets(chunk, user_dict)
+    
+    return pd.DataFrame(tweet_list)
+
+def extract_tweets(file):
+    '''
+    file: filepath for jsonl from hydrator app
+    user_file: list of users whom you want to get tweets from
+    output: list of dictionaries with minimal
+    '''
+
+    tweet_list = []
+
+    with open(file) as f:
+
+        for line in f:
+            tweet = json.loads(line)
+
+            if not 'retweeted_status' in tweet and not tweet['is_quote_status']:
+                temp = {}
+                # tweet level data
+                temp['id'] = tweet['id_str']
+                temp['text'] = tweet['full_text']
+                temp['hashtags'] = len(tweet['entities']['hashtags']) \
+                    if 'hashtags' in tweet['entities'] else 0
+                temp['mentions'] = len(tweet['entities']['user_mentions']) \
+                    if 'user_mentions' in tweet['entities'] else 0
+                temp['urls'] = len(tweet['entities']['urls']) \
+                    if 'urls' in tweet['entities'] else 0
+                temp['media'] = len(tweet['entities']['media']) \
+                    if 'media' in tweet['entities'] else 0
+                temp['symbols'] = len(tweet['entities']['symbols']) \
+                    if 'symbols' in tweet['entities'] else 0
+                temp['polls'] = len(tweet['entities']['polls']) \
+                    if 'polls' in tweet['entities'] else 0
+                temp['retweets'] = tweet['retweet_count']
+                temp['favorites'] = tweet['favorite_count']
+                temp['sensitive'] = tweet['possibly_sensitive'] \
+                    if 'possibly_sensitive' in tweet else 'False'
+
+                # user level data
+                temp['user_id'] = tweet['user']['id_str']
+                temp['user_name'] = tweet['user']['screen_name']
+                temp['user_followers'] = tweet['user']['followers_count']
+                temp['user_friends'] = tweet['user']['friends_count']
+                temp['user_created_at'] = tweet['user']['created_at']
+                temp['user_favorites'] = tweet['user']['favourites_count']
+                temp['user_verified'] = tweet['user']['verified']
+                temp['user_tweets'] = tweet['user']['statuses_count']
+
+                tweet_list.append(temp)
+    
+    return tweet_list
+
+def get_all_tweets(chunk_files):
+
+    tweet_list = []
+    for chunk in chunk_files:
+        tweet_list = tweet_list + extract_tweets(chunk)
     
     return pd.DataFrame(tweet_list)
 

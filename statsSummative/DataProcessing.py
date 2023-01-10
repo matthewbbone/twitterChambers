@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from dateutil import parser
 from dateutil.relativedelta import relativedelta, SU
 from collections import Counter
+import datetime as dt
 
 # dictionary for abbreviating topics
 topic_abb = {
@@ -58,7 +59,7 @@ def merge_preprocess_climate_tweets(climatepath, retweetpath, start=None, end=No
     
     # binary grouping where aggressive, male, and denier are grouped in opposition
     filtered_df['aggressive'] = filtered_df['aggressiveness'].map(lambda x: 1 if x=='aggressive' else 0)
-    filtered_df['male'] = filtered_df['gender'].map(lambda x: 1 if x=='male' else 0)
+    filtered_df['male'] = filtered_df['gender'].map(lambda x: 1 if x=='male' else 0 if x == 'female' else None)
     filtered_df['denier'] = filtered_df['stance'].map(lambda x: 1 if x=='denier' else 0)
 
     if retweets:
@@ -74,15 +75,25 @@ def merge_preprocess_climate_tweets(climatepath, retweetpath, start=None, end=No
             'sentiment', 'denier', 'male', 'aggressive', 'date', 'week', 'month'
         ]]
     else:
-        filtered_df['verified'] = filtered_df['verified'].map(lambda x: 1 if x=='True' else 0)
-        filtered_df['freq'] = filtered_df.apply(
-            lambda r: r['total'] / (1 + (r['date'] - r['begin'].date()).days),
-            axis = 1
-        )
-        return filtered_df[[
-            'id', 'text', 'author_id', 'author_name', 'followers', 'topic', 'verified',
-            'freq', 'sentiment', 'denier', 'male', 'aggressive', 'date', 'week', 'month'
-        ]]
+        if set(['verified', 'begin', 'total']).issubset(set(filtered_df.columns)):
+            filtered_df['verified'] = filtered_df['verified'].map(lambda x: 1 if x=='True' else 0)
+            filtered_df['freq'] = filtered_df.apply(
+                lambda r: r['total'] / (1 + (dt.datetime(2022,11,30).date() - r['begin'].date()).days),
+                axis = 1
+            )
+            return filtered_df[[
+                'id', 'text', 'author_id', 'author_name', 'followers', 'topic', 'verified',
+                'freq', 'sentiment', 'denier', 'male', 'aggressive', 'date', 'week', 'month'
+            ]]
+        else:
+            #filtered_df['user_verified'] = filtered_df['user_verified'].map(lambda x: 1 if x=='True' else 0)
+            #filtered_df['sensitive'] = filtered_df['sensitive'].map(lambda x: 1 if x=='True' else 0)
+            filtered_df['user_freq'] = filtered_df.apply(
+                lambda r: r['user_tweets'] / (1 + (dt.datetime(2022,11,30).date() - parser.parse(r['user_created_at']).date()).days),
+                axis = 1
+            )
+            return filtered_df
+
 
         
 
@@ -111,7 +122,7 @@ def get_leading_users(retweet_df, timeunit, N, M):
         
         impact_df = network_df.groupby('influencer').agg({'n_retweets': 'sum'})
         impact_history[t] = impact_df.to_dict()['n_retweets']
-        leading_users += list(impact_df.sort_values('n_retweets').tail(50).index)
+        leading_users += list(impact_df.sort_values('n_retweets').tail(N).index)
 
     return impact_history, dict(Counter(leading_users).most_common(M))
 
@@ -179,7 +190,7 @@ def summarize_tweet_data(df, timeunit, type='retweets'):
     # most popular topic
     # output_df['topic'] = df.groupby([timeunit, author])['topic'] \
     #                                 .agg(lambda x: rnd.choice(pd.Series.mode(x, dropna=False))).values
-
+    
     if type=='retweets':
         output_df['audience_followers'] = get_group_mean(df, 'author_followers', timeunit, author)
         output_df['followers'] = get_group_mean(df, 'infl_followers', timeunit, author)
