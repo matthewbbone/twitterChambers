@@ -60,7 +60,13 @@ def merge_preprocess_climate_tweets(climatepath, retweetpath, start=None, end=No
     # binary grouping where aggressive, male, and denier are grouped in opposition
     filtered_df['aggressive'] = filtered_df['aggressiveness'].map(lambda x: 1 if x=='aggressive' else 0)
     filtered_df['male'] = filtered_df['gender'].map(lambda x: 1 if x=='male' else 0 if x == 'female' else None)
-    filtered_df['denier'] = filtered_df['stance'].map(lambda x: 1 if x=='denier' else 0)
+
+    deny_map = {
+        'denier': 1,
+        'neutral': .5,
+        'believer': 0
+    }
+    filtered_df['denier'] = filtered_df['stance'].map(lambda x: deny_map[x])
 
     if retweets:
         filtered_df['infl_verified'] = filtered_df['infl_verified'].map(lambda x: 1 if x=='True' else 0)
